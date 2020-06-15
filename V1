@@ -1,0 +1,123 @@
+###  ISS Quick Glance Notification using ISS_Info library and sense hat  ###
+###  run sudo pip install ISS_Info from command line to install library before running code.
+###  code will get two spamples from NASA open API and compare the two to work out if the ISS is approaching or receding
+###  icons will show on the sense hat:
+###  Red rrow pointing away from green line = receding (moving away from you)
+###  Yellow arrow pointing towards green line ISS is approaching (far_approaching) greater than 3000km
+###  Green arrow pointing towards green line ISS is on a close approach less than 3000km
+###  Green cross with yellow border, ISS is above the horizon (less than 1500km)
+###  NOTE - not every above horizon situation will be visible, and the icon still shows during the daytime! 
+###  Check the ESA tracker or heavens above for iss location and predictions.
+###  please feel free to chage or improve this code (im not a great coder, so there are probably better ways to do this) 
+###  print to console lines are there for debugging and are commented out.
+
+from sense_hat import SenseHat
+from time import sleep
+import sys
+import ISS_Info
+import json
+from math import sin, cos, sqrt, atan2, radians
+sense = SenseHat()
+R = 6373.0  #radius of the earth
+lat1 = radians(11.222222) ###dummy info - Insert your latitude here
+lon1 = radians(-11.22222) ###dummy info - Insert your longitude here
+
+
+X = [0, 155, 0]  # green
+O = [155, 155, 155]  # White
+Z = [155, 0 , 0] #red
+Y = [0,0,0] #off
+A = [155,155,0] #yellow
+
+overhead = [
+Y, Y, A, X, X, A, Y, Y,
+Y, Y, A, X, X, A, Y, Y,
+A, A, A, X, X, A, A, A,
+X, X, X, X, X, X, X, X,
+X, X, X, X, X, X, X, X,
+A, A, A, X, X, A, A, A,
+Y, Y, A, X, X, A, Y, Y,
+Y, Y, A, X, X, A, Y, Y
+]
+
+close_aproaching = [
+Y, Y, Y, Y, Y, Y, Y, X,
+Y, Y, X, Y, Y, Y, Y, X,
+Y, Y, Y, X, Y, Y, X, Y,
+X, X, X, X, X, Y, X, Y,
+Y, Y, Y, X, Y, Y, X, Y,
+Y, Y, X, Y, Y, Y, X, Y,
+Y, Y, Y, Y, Y, Y, Y, X,
+Y, Y, Y, Y, Y, Y, Y, X
+]
+
+receding = [
+X, Y, Y, Y, Y, Y, Y, Y,
+X, Y, Y, Y, Y, Z, Y, Y,
+Y, X, Y, Y, Y, Y, Z, Y,
+Y, X, Z, Z, Z, Z, Z, Z,
+Y, X, Y, Y, Y, Y, Z, Y,
+Y, X, Y, Y, Y, Z, Y, Y,
+X, Y, Y, Y, Y, Y, Y, Y,
+X, Y, Y, Y, Y, Y, Y, Y
+]
+
+far_aproaching = [
+Y, Y, Y, Y, Y, Y, Y, X,
+Y, Y, A, Y, Y, Y, Y, X,
+Y, Y, Y, A, Y, Y, X, Y,
+A, A, A, A, A, Y, X, Y,
+Y, Y, Y, A, Y, Y, X, Y,
+Y, Y, A, Y, Y, Y, X, Y,
+Y, Y, Y, Y, Y, Y, Y, X,
+Y, Y, Y, Y, Y, Y, Y, X
+]
+
+while True:
+   isslocationa = ISS_Info.iss_current_loc()
+   locationa = isslocationa['iss_position']
+   #print(location)
+   isslata = float(locationa['latitude'])
+   isslona = float(locationa['longitude'])
+   #print(lat2)
+   #print(lon2)
+   lat2a = radians(isslata)
+   lon2a = radians(isslona)
+   dlona = lon2a - lon1
+   dlata = lat2a - lat1
+
+   a = sin(dlata /2)**2 + cos(lat1) * cos(lat2a) * sin(dlona / 2)**2
+   c = 2 * atan2(sqrt(a), sqrt(1 - a))
+   distancea = R * c
+   rounded1 = round(distancea, 2)
+   #print "The ISS is", rounded1, "km away"
+   sleep(5)
+   isslocationb = ISS_Info.iss_current_loc()
+   locationb = isslocationb['iss_position']
+   #print(location)
+   isslatb = float(locationb['latitude'])
+   isslonb = float(locationb['longitude'])
+   #print(lat2)
+   #print(lon2)
+   lat2b = radians(isslatb)
+   lon2b = radians(isslonb)
+   dlonb = lon2b - lon1
+   dlatb = lat2b - lat1
+
+   a = sin(dlatb /2)**2 + cos(lat1) * cos(lat2b) * sin(dlonb / 2)**2
+   c = 2 * atan2(sqrt(a), sqrt(1 - a))
+   distanceb = R * c
+   rounded2 = round(distanceb, 2)
+   #print "The ISS is", rounded2, "km away"
+   if rounded1>rounded2:
+    #print "approaching"
+     if rounded2<3000 and rounded2>1500:
+        sense.set_pixels(close_aproaching)
+     if rounded2<1500:
+        sense.set_pixels(overhead)
+     if rounded2>3000:
+        sense.set_pixels(far_aproaching)
+   if rounded1<rounded2:
+    #print "receding"
+     sense.set_pixels(receding)
+   sleep(5)
